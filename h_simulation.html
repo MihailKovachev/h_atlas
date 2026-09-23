@@ -1,0 +1,2751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Hydrogen Atom Wavefunction Simulation</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body,
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #05070d;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e2e8f0;
+    }
+
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    .glass-panel {
+      background: rgba(13, 19, 33, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 12px 14px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+      z-index: 10;
+      position: absolute;
+      transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+    }
+
+    /* UI Toggle State - Hides all glass panels except the toggle button itself */
+    body.ui-hidden .glass-panel:not(#toggle-ui-btn) {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transform: scale(0.98);
+    }
+
+    /* Bottom-Right UI Toggle Button */
+    #toggle-ui-btn {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      z-index: 50;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 14px;
+      background: rgba(13, 19, 33, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+      transition: all 0.2s ease;
+    }
+
+    #toggle-ui-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: #38bdf8;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+    }
+
+    #toggle-ui-btn:active {
+      transform: scale(0.96);
+    }
+
+    #toggle-ui-btn svg {
+      flex-shrink: 0;
+      stroke: currentColor;
+    }
+
+    #info-panel {
+      top: 16px;
+      left: 16px;
+      width: 350px;
+      max-width: calc(100vw - 32px);
+    }
+
+    h1 {
+      font-size: 1.02rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+      color: #f8fafc;
+    }
+
+    .subtitle {
+      font-size: 0.76rem;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .mode-selector {
+      display: flex;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 8px;
+      gap: 3px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 6px 5px;
+      font-size: 0.71rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .mode-btn:hover {
+      color: #f1f5f9;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .mode-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45);
+    }
+
+    .math-display {
+      background: rgba(15, 23, 42, 0.9);
+      border-left: 3px solid #38bdf8;
+      padding: 7px 11px;
+      font-size: 0.78rem;
+      border-radius: 4px;
+      line-height: 1.45;
+      font-family: "Cambria Math", "Times New Roman", serif;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.68rem;
+    }
+
+    .badge-proton {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    #orbitals-panel {
+      top: 16px;
+      right: 16px;
+      width: 380px;
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+    }
+
+    .section-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #93c5fd;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .norm-status {
+      font-size: 0.75rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .orbital-card {
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 9px;
+      margin-bottom: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .orbital-card.card-excluded {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px dashed rgba(255, 255, 255, 0.14);
+      opacity: 0.65;
+    }
+
+    .orbital-toggle-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+    }
+
+    .orbital-toggle-label input[type="checkbox"] {
+      accent-color: #38bdf8;
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .badge-state-status {
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .badge-state-active {
+      background: rgba(56, 189, 248, 0.18);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .badge-state-excluded {
+      background: rgba(100, 116, 139, 0.2);
+      color: #94a3b8;
+      border: 1px solid rgba(100, 116, 139, 0.35);
+    }
+
+    .card-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .card-row:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    input,
+    select,
+    button {
+      user-select: auto;
+      -webkit-user-select: auto;
+    }
+
+    input[type="number"],
+    select {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      width: 52px;
+    }
+
+    input[type="range"] {
+      accent-color: #38bdf8;
+      cursor: pointer;
+      flex: 1;
+      touch-action: none;
+      height: 18px;
+    }
+
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button.btn-danger {
+      background: #dc2626;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+    }
+
+    button.btn-secondary {
+      background: #334155;
+      color: #cbd5e1;
+    }
+
+    button.btn-secondary:hover {
+      background: #475569;
+      color: #ffffff;
+    }
+
+    button.btn-active-state {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .iso-quick-btn {
+      flex: 1;
+      padding: 3px 0;
+      font-size: 0.68rem;
+      border-radius: 4px;
+    }
+
+    #bottom-panel {
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* Container for bottom-left HUD elements */
+    #bottom-left-container {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    #bottom-left-container .glass-panel {
+      position: relative;
+      top: auto;
+      bottom: auto;
+      left: auto;
+      right: auto;
+    }
+
+    /* Quantum Phase and Scale Legend Panel */
+    #legend-panel {
+      width: 250px;
+      padding: 9px 12px;
+      pointer-events: auto;
+    }
+
+    /* Vertical Camera HUD Panel in Bottom-Left */
+    #nav-hint {
+      width: 180px;
+      padding: 8px 10px;
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      pointer-events: none;
+    }
+
+    .nav-hint-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 3px;
+    }
+
+    .nav-hint-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #93c5fd;
+    }
+
+    .nav-hint-badge {
+      font-size: 0.64rem;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.18);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .nav-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.66rem;
+    }
+
+    .nav-row-action {
+      color: #94a3b8;
+    }
+
+    .nav-row-keys {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      white-space: nowrap;
+    }
+
+    .key {
+      background: #1e293b;
+      border: 1px solid #475569;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #f1f5f9;
+      font-weight: bold;
+      font-size: 0.64rem;
+    }
+
+    .color-gradient-bar {
+      height: 8px;
+      border-radius: 3px;
+      margin: 5px 0 4px 0;
+      transition: background 0.3s ease;
+    }
+
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.63rem;
+      color: #94a3b8;
+    }
+
+    .axis-legend {
+      display: flex;
+      gap: 8px;
+      font-size: 0.68rem;
+      margin-top: 6px;
+      padding-top: 5px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .axis-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+    }
+
+    .scale-legend {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      transition: opacity 0.2s ease;
+    }
+
+    .scale-legend-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.68rem;
+      margin-bottom: 4px;
+    }
+
+    .scale-ruler-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .scale-ruler {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .scale-ruler-cap {
+      width: 2px;
+      height: 8px;
+      background: #38bdf8;
+      border-radius: 1px;
+      box-shadow: 0 0 5px rgba(56, 189, 248, 0.8);
+    }
+
+    .scale-ruler-bar {
+      height: 2px;
+      background: #38bdf8;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+      transition: width 0.06s ease-out;
+      width: 80px;
+    }
+
+    .scale-bohr-val {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #f8fafc;
+      white-space: nowrap;
+    }
+
+    .scale-conversion-row {
+      display: flex;
+      justify-content: flex-end;
+      font-size: 0.62rem;
+      color: #94a3b8;
+      margin-top: 3px;
+    }
+
+    @media (max-width: 860px) {
+      #orbitals-panel {
+        top: auto;
+        bottom: 74px;
+        right: 16px;
+        width: calc(100vw - 32px);
+        max-height: 38vh;
+      }
+
+      #info-panel {
+        width: calc(100vw - 32px);
+      }
+
+      #bottom-panel {
+        bottom: 68px;
+      }
+
+      #bottom-left-container,
+      #legend-panel,
+      #nav-hint {
+        display: none;
+      }
+    }
+  </style>
+
+  <!-- Three.js via Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+
+<body>
+
+  <div id="canvas-container"></div>
+
+  <!-- Bottom-Right Floating UI Toggle Button -->
+  <button id="toggle-ui-btn" title="Toggle All UI (H)">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+      <line x1="1" y1="1" x2="23" y2="23"></line>
+    </svg>
+    <span id="toggle-ui-text">Hide UI</span>
+  </button>
+
+  <div id="info-panel" class="glass-panel">
+    <h1>Hydrogen Wavefunction Ψ(r, t)</h1>
+    <div class="subtitle">Two-Body Reduced Mass Schrödinger Evolution (n ≤ 8)</div>
+
+    <div class="mode-selector">
+      <button id="mode-btn-psi" class="mode-btn active">Wavefunction Ψ</button>
+      <button id="mode-btn-prob" class="mode-btn">Probability |Ψ|²</button>
+      <button id="mode-btn-iso" class="mode-btn">Boundary (90%)</button>
+    </div>
+
+    <div class="math-display">
+      <div id="mode-math-title"><b>Wavefunction Evolution:</b></div>
+      <div id="mode-math-formula">Ψ(<b>r</b>, <i>t</i>) = &sum; <i>c</i><sub><i>k</i></sub>
+        &psi;<sub><i>k</i></sub>(<b>r</b>) <i>e</i><sup>&minus;<i>iE</i><sub><i>k</i></sub><i>t</i>/ℏ</sup></div>
+      <div id="mode-math-desc" style="font-size:0.73rem; color:#94a3b8; margin-top:3px;">
+        Color encodes complex phase &theta; = arg(Ψ); brightness encodes amplitude.
+      </div>
+      <div style="margin-top: 5px; padding-top: 3px; border-top: 1px dashed rgba(255, 255, 255, 0.1);">
+        <span class="badge badge-proton">Proton mass <i>m</i><sub>p</sub> &asymp; 1836.15 <i>m</i><sub>e</sub></span>
+      </div>
+      <div style="font-size: 0.71rem; color: #94a3b8; margin-top: 3px;">
+        Reduced Mass: μ = <span id="val-mu">0.999456</span> <i>m</i><sub>e</sub><br>
+        Bohr Radius: <i>a</i><sub>μ</sub> = <span id="val-amu">52.95</span> pm
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom-Left Stack: Quantum Phase UI Panel + Camera HUD UI Panel -->
+  <div id="bottom-left-container">
+    <div id="legend-panel" class="glass-panel">
+      <div id="legend-title" style="font-size:0.73rem; font-weight:600; color:#cbd5e1;">Quantum Phase arg(Ψ)</div>
+      <div id="legend-gradient" class="color-gradient-bar"
+        style="background: linear-gradient(to right, #00ffff, #3b82f6, #9333ea, #ef4444, #f59e0b, #10b981, #00ffff);">
+      </div>
+      <div id="legend-labels" class="legend-labels">
+        <span>&minus;π</span>
+        <span>&minus;π/2</span>
+        <span style="color:#f87171; font-weight:bold;">0</span>
+        <span>+π/2</span>
+        <span>+π</span>
+      </div>
+
+      <div id="axis-legend-group" class="axis-legend">
+        <span class="axis-tag" style="color: #ef4444;">● X</span>
+        <span class="axis-tag" style="color: #22c55e;">● Y</span>
+        <span class="axis-tag" style="color: #3b82f6;">● Z (Quantization)</span>
+      </div>
+
+      <!-- Dynamic 2D Scale Measure Section -->
+      <div id="scale-legend-group" class="scale-legend">
+        <div class="scale-legend-header">
+          <span style="font-weight:600; color:#cbd5e1;">Distance Scale</span>
+          <span id="scale-metric-label" style="font-weight:700; color:#38bdf8;">--</span>
+        </div>
+        <div class="scale-ruler-row">
+          <div class="scale-ruler">
+            <div class="scale-ruler-cap"></div>
+            <div id="scale-ruler-bar" class="scale-ruler-bar"></div>
+            <div class="scale-ruler-cap"></div>
+          </div>
+          <span id="scale-bohr-label" class="scale-bohr-val">--</span>
+        </div>
+        <div class="scale-conversion-row">
+          <span id="scale-zoom-dist" style="color:#64748b;">dist: 1694 pm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vertical HUD Camera Navigation Panel in Bottom-Left -->
+    <div id="nav-hint" class="glass-panel">
+      <!-- Populated dynamically via updateNavHintUI() -->
+    </div>
+  </div>
+
+  <div id="orbitals-panel" class="glass-panel">
+    <div class="section-title">
+      <span>Superposition Builder</span>
+      <button id="add-orbital-btn">+ Add State</button>
+    </div>
+
+    <div class="norm-status" id="norm-status-container">
+      <span id="norm-status-text">Normalizer: <b>&Sigma; |c<sub>k</sub>|² = 1.000</b></span>
+    </div>
+
+    <div id="orbital-list"></div>
+
+    <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">
+
+    <div class="section-title"><span>Spatial Guides &amp; Exposure</span></div>
+    <div class="card-row">
+      <label><input type="checkbox" id="toggle-axes" checked> Cartesian Axes</label>
+      <label style="margin-left:auto;"><input type="checkbox" id="toggle-scale" checked> Spatial Scale</label>
+    </div>
+
+    <div class="card-row">
+      <label style="flex:1;">Simulation Speed: <span id="speed-label"
+          style="font-weight:600; color:#38bdf8;">1.0x</span></label>
+      <input type="range" id="speed-slider" min="0" max="4" step="0.1" value="1.0">
+    </div>
+
+    <div class="card-row" id="row-gain">
+      <label style="flex:1;">Volumetric Exposure: <span id="gain-label"
+          style="font-weight:600; color:#38bdf8;">5.0</span></label>
+      <input type="range" id="gain-slider" min="0.2" max="30.0" step="0.5" value="5.0">
+    </div>
+
+    <!-- Isosurface Boundary Controls -->
+    <div class="card-row" id="row-iso-percent"
+      style="display:none; flex-direction:column; align-items:stretch; gap:6px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <label>Enclosed Probability Cutoff: <b id="iso-percent-label" style="color:#38bdf8;">90%</b></label>
+        <div style="display:flex; align-items:center; gap:2px;">
+          <input type="number" id="iso-percent-num" min="10" max="99" step="1" value="90"
+            style="width:48px; text-align:center;">
+          <span style="font-size:0.75rem; color:#94a3b8;">%</span>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; width:100%;">
+        <span style="font-size:0.7rem; color:#64748b;">10%</span>
+        <input type="range" id="iso-percent-slider" min="10" max="99" step="1" value="90">
+        <span style="font-size:0.7rem; color:#64748b;">99%</span>
+      </div>
+      <div style="display:flex; gap:4px; margin-top:2px;">
+        <button type="button" class="btn-secondary iso-quick-btn" data-val="50">50%</button>
+        <button type="button" class="btn-secondary iso-quick-btn" data-val="75">75%</button>
+        <button type="button" class="btn-secondary iso-quick-btn" data-val="85">85%</button>
+        <button type="button" class="btn-secondary iso-quick-btn btn-active-state" data-val="90">90%</button>
+        <button type="button" class="btn-secondary iso-quick-btn" data-val="95">95%</button>
+      </div>
+    </div>
+
+    <div class="card-row" id="row-iso-alpha" style="display:none;">
+      <label style="flex:1;">Surface Opacity: <span id="iso-alpha-label"
+          style="font-weight:600; color:#38bdf8;">85%</span></label>
+      <input type="range" id="iso-alpha-slider" min="0.2" max="1.0" step="0.05" value="0.85">
+    </div>
+
+    <div class="card-row">
+      <label style="flex:1;">Sampling Quality (Steps):</label>
+      <select id="steps-select" style="width:85px;">
+        <option value="10">Draft (10)</option>
+        <option value="75" selected>Balanced (75)</option>
+        <option value="160">High (160)</option>
+        <option value="320">Ultra (320)</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="bottom-panel" class="glass-panel">
+    <button id="play-btn">Pause</button>
+    <button id="nav-mode-btn" class="btn-secondary" title="Toggle Orbit vs Free Fly Navigation (F)">Cam: Orbit</button>
+    <button id="toggle-axes-btn" class="btn-secondary">Axes: ON</button>
+    <button id="toggle-scale-btn" class="btn-secondary">Scale: ON</button>
+    <button id="reset-cam-btn" class="btn-secondary">Reset Camera</button>
+    <button id="share-link-btn" class="btn-secondary" title="Copy configuration as URL">📋 Share Link</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const ELECTRON_MASS = 1.0;
+    const protonMass = 1836.15267;
+    const BOHR_RADIUS_METERS = 0.529177210903e-10;
+    const PM_PER_BOHR = BOHR_RADIUS_METERS * 1e12; // ~52.9177 pm per a₀
+    let mu = (ELECTRON_MASS * protonMass) / (ELECTRON_MASS + protonMass);
+    let a_mu = 1.0 / mu;
+    let isPaused = false;
+    let simSpeed = 1.0;
+    let simTime = 0.0;
+    let currentMode = 'psi';
+    let guidesVisible = true;
+    let scaleVisible = true;
+    let uiVisible = true;
+    let targetProbability = 0.90;
+    let isoAlpha = 0.85;
+
+    // Navigation state: 'orbit' or 'fly'
+    let navMode = 'orbit';
+    let flyYaw = 0.0;
+    let flyPitch = 0.0;
+
+    const MAX_ORBITALS = 6;
+    let orbitals = [];
+    let isInitializing = true;
+
+    // ==========================================
+    // UI VISIBILITY TOGGLE LOGIC
+    // ==========================================
+    function setUIVisibility(visible) {
+      uiVisible = visible;
+      document.body.classList.toggle('ui-hidden', !uiVisible);
+
+      const btn = document.getElementById('toggle-ui-btn');
+      if (btn) {
+        btn.innerHTML = uiVisible
+          ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+               <line x1="1" y1="1" x2="23" y2="23"></line>
+             </svg>
+             <span id="toggle-ui-text">Hide UI</span>`
+          : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+               <circle cx="12" cy="12" r="3"></circle>
+             </svg>
+             <span id="toggle-ui-text">Show UI</span>`;
+        btn.setAttribute('title', uiVisible ? 'Hide All UI (H)' : 'Show All UI (H)');
+      }
+    }
+
+    document.getElementById('toggle-ui-btn').onclick = () => setUIVisibility(!uiVisible);
+
+    const FACTORIALS = new Float64Array(21);
+    FACTORIALS[0] = 1.0;
+    for (let i = 1; i <= 20; i++) FACTORIALS[i] = FACTORIALS[i - 1] * i;
+
+    function factorial(n) {
+      if (n <= 1) return 1.0;
+      if (n <= 20) return FACTORIALS[n];
+      let res = FACTORIALS[20];
+      for (let i = 21; i <= n; i++) res *= i;
+      return res;
+    }
+
+    function assocLaguerreJS(p, alpha, x) {
+      if (p <= 0) return 1.0;
+      let L0 = 1.0;
+      let L1 = 1.0 + alpha - x;
+      if (p === 1) return L1;
+      let Lk = 0.0;
+      for (let k = 1; k < p; ++k) {
+        Lk = ((2.0 * k + 1.0 + alpha - x) * L1 - (k + alpha) * L0) / (k + 1.0);
+        L0 = L1;
+        L1 = Lk;
+      }
+      return L1;
+    }
+
+    function assocLegendreJS(l, m, x) {
+      if (l === 0) return 1.0;
+      if (l === 1 && m === 0) return x;
+
+      let pmm = 1.0;
+      const somx2 = Math.sqrt(Math.max(0.0, 1.0 - x * x));
+      let fact = 1.0;
+      for (let i = 1; i <= m; ++i) {
+        pmm *= fact * somx2;
+        fact += 2.0;
+      }
+      if (l === m) return pmm;
+
+      const pm1 = x * (2 * m + 1) * pmm;
+      if (l === m + 1) return pm1;
+
+      let pl = 0.0;
+      let p_prev2 = pmm;
+      let p_prev1 = pm1;
+      const maxK = l - m;
+      for (let k = 2; k <= maxK; ++k) {
+        const cur_l = m + k;
+        pl = ((2.0 * cur_l - 1.0) * x * p_prev1 - (cur_l + m - 1.0) * p_prev2) / k;
+        p_prev2 = p_prev1;
+        p_prev1 = pl;
+      }
+      return pl;
+    }
+
+    function computeNormalization(n, l, m) {
+      const absM = Math.abs(m);
+      const radialFactor = Math.sqrt(
+        Math.pow(2.0 / (n * a_mu), 3) *
+        (factorial(n - l - 1) / (2.0 * n * factorial(n + l)))
+      );
+      const angularFactor = Math.sqrt(
+        ((2.0 * l + 1.0) / (4.0 * Math.PI)) *
+        (factorial(l - absM) / factorial(l + absM))
+      );
+      return radialFactor * angularFactor;
+    }
+
+    // Numerical integration grid
+    const Nr = 64, Nth = 20, Nph = 16;
+    const numSamples = Nr * Nth * Nph;
+    const NUM_BINS = 1024;
+    const LOG_MIN = -16.0;
+    const invLogRange = 1.0 / (-LOG_MIN);
+
+    const isoRVals = new Float32Array(Nr);
+    const isoR2dr = new Float32Array(Nr);
+    const isoCosThVals = new Float32Array(Nth);
+    const isoSinThDthDph = new Float32Array(Nth);
+    const isoPhVals = new Float32Array(Nph);
+
+    const dTh = Math.PI / Nth;
+    const dPh = (2.0 * Math.PI) / Nph;
+    for (let j = 0; j < Nth; j++) {
+      const th = (j + 0.5) * dTh;
+      isoCosThVals[j] = Math.cos(th);
+      isoSinThDthDph[j] = Math.sin(th) * dTh * dPh;
+    }
+    for (let k = 0; k < Nph; k++) isoPhVals[k] = k * dPh;
+
+    const isoProbs = new Float32Array(numSamples);
+    const isoWeights = new Float32Array(numSamples);
+    const isoBinWeight = new Float64Array(NUM_BINS);
+
+    const orbR = Array.from({length: MAX_ORBITALS}, () => new Float32Array(Nr));
+    const orbP = Array.from({length: MAX_ORBITALS}, () => new Float32Array(Nth));
+    const orbPhiCos = Array.from({length: MAX_ORBITALS}, () => new Float32Array(Nph));
+    const orbPhiSin = Array.from({length: MAX_ORBITALS}, () => new Float32Array(Nph));
+    const orbAmp = new Float32Array(MAX_ORBITALS);
+
+    let lastRMax = -1.0;
+    let isoGridValid = false;
+    let cachedMaxProb = 0.0;
+    let cachedTotalWeight = 0.0;
+    let isoRafId = null;
+
+    function isSystemStationary() {
+      const active = orbitals.filter(o => o.enabled !== false);
+      if (active.length <= 1) return true;
+      const n0 = active[0].n;
+      for (let i = 1; i < active.length; i++) {
+        if (active[i].n !== n0) return false;
+      }
+      return true;
+    }
+
+    function findIsovalueFromHistogram(targetFraction) {
+      if (cachedMaxProb <= 1e-16 || cachedTotalWeight <= 1e-16) return 0.001;
+      const targetWeight = cachedTotalWeight * targetFraction;
+      let accum = 0.0;
+      let isoVal = cachedMaxProb * Math.exp(LOG_MIN);
+
+      for (let b = NUM_BINS - 1; b >= 0; b--) {
+        accum += isoBinWeight[b];
+        if (accum >= targetWeight) {
+          const t = (b + 0.5) / NUM_BINS;
+          const logRatio = LOG_MIN + t * (-LOG_MIN);
+          isoVal = cachedMaxProb * Math.exp(logRatio);
+          break;
+        }
+      }
+      return Math.max(isoVal, 1e-9);
+    }
+
+    function computeProbabilityIsovalue(targetFraction = 0.90) {
+      const normalized = getActiveNormalizedOrbitals();
+      const numOrbs = normalized.length;
+      if (numOrbs === 0) {
+        if (typeof raymarchUniforms !== 'undefined' && raymarchUniforms.u_peakDensity) {
+          raymarchUniforms.u_peakDensity.value = 1.0;
+        }
+        return 0.001;
+      }
+
+      if (isoGridValid) return findIsovalueFromHistogram(targetFraction);
+
+      let maxN = 1;
+      for (let o = 0; o < numOrbs; o++) {
+        if (normalized[o].n > maxN) maxN = normalized[o].n;
+      }
+      const rMax = Math.max(20.0, maxN * (maxN + 1.2) * 2.7) * a_mu;
+
+      if (Math.abs(rMax - lastRMax) > 1e-4) {
+        lastRMax = rMax;
+        const invNr = 1.0 / Nr;
+        for (let i = 0; i < Nr; i++) {
+          const u = (i + 0.5) * invNr;
+          isoRVals[i] = rMax * u * u;
+          const rLow = rMax * (i * invNr) * (i * invNr);
+          const rHigh = rMax * ((i + 1) * invNr) * ((i + 1) * invNr);
+          isoR2dr[i] = (rHigh * rHigh * rHigh - rLow * rLow * rLow) / 3.0;
+        }
+      }
+
+      for (let o = 0; o < numOrbs; o++) {
+        const orb = normalized[o];
+        const absM = Math.abs(orb.m);
+        const rArr = orbR[o];
+        const pArr = orbP[o];
+        const invNaMu = 2.0 / (orb.n * a_mu);
+        const l = orb.l;
+        const pLag = orb.n - l - 1;
+        const alphaLag = 2 * l + 1;
+        const scaleAmp = orb.norm * orb.normAmp;
+
+        for (let i = 0; i < Nr; i++) {
+          const rho = isoRVals[i] * invNaMu;
+          const L = assocLaguerreJS(pLag, alphaLag, rho);
+          const powRho = (l === 0) ? 1.0 : (l === 1 ? rho : (l === 2 ? rho * rho : Math.pow(rho, l)));
+          rArr[i] = scaleAmp * powRho * Math.exp(-0.5 * rho) * L;
+        }
+
+        const cs = (orb.m > 0 && (orb.m % 2 !== 0)) ? -1.0 : 1.0;
+        for (let j = 0; j < Nth; j++) {
+          pArr[j] = assocLegendreJS(l, absM, isoCosThVals[j]) * cs;
+        }
+
+        const omega_n = 2.4 / (orb.n * orb.n);
+        const basePhase = omega_n * simTime + orb.phase;
+        const cosArr = orbPhiCos[o];
+        const sinArr = orbPhiSin[o];
+        for (let k = 0; k < Nph; k++) {
+          const angle = orb.m * isoPhVals[k] + basePhase;
+          cosArr[k] = Math.cos(angle);
+          sinArr[k] = Math.sin(angle);
+        }
+      }
+
+      let maxProb = 0.0;
+      let sampleIdx = 0;
+      let totalWeight = 0.0;
+
+      for (let i = 0; i < Nr; i++) {
+        const r2dr = isoR2dr[i];
+        for (let j = 0; j < Nth; j++) {
+          const dV = r2dr * isoSinThDthDph[j];
+          for (let o = 0; o < numOrbs; o++) orbAmp[o] = orbR[o][i] * orbP[o][j];
+
+          for (let k = 0; k < Nph; k++) {
+            let re = 0.0, im = 0.0;
+            for (let o = 0; o < numOrbs; o++) {
+              const a = orbAmp[o];
+              re += a * orbPhiCos[o][k];
+              im += a * orbPhiSin[o][k];
+            }
+            const p = re * re + im * im;
+            if (p > maxProb) maxProb = p;
+            isoProbs[sampleIdx] = p;
+            const w = p * dV;
+            isoWeights[sampleIdx] = w;
+            totalWeight += w;
+            sampleIdx++;
+          }
+        }
+      }
+
+      cachedMaxProb = maxProb;
+      cachedTotalWeight = totalWeight;
+
+      if (typeof raymarchUniforms !== 'undefined' && raymarchUniforms.u_peakDensity) {
+        raymarchUniforms.u_peakDensity.value = Math.max(maxProb, 1e-15);
+      }
+
+      if (maxProb <= 1e-16 || totalWeight <= 1e-16) {
+        isoGridValid = true;
+        return 0.001;
+      }
+
+      isoBinWeight.fill(0);
+      const invMaxProb = 1.0 / maxProb;
+      const minThresholdP = maxProb * Math.exp(LOG_MIN);
+
+      for (let s = 0; s < numSamples; s++) {
+        const p = isoProbs[s];
+        if (p <= minThresholdP) continue;
+        const logRatio = Math.log(p * invMaxProb);
+        if (logRatio > LOG_MIN) {
+          const t = (logRatio - LOG_MIN) * invLogRange;
+          const b = Math.min(NUM_BINS - 1, Math.max(0, (t * NUM_BINS) | 0));
+          isoBinWeight[b] += isoWeights[s];
+        }
+      }
+
+      isoGridValid = true;
+      return findIsovalueFromHistogram(targetFraction);
+    }
+
+    function updateIsoThreshold() {
+      const threshold = computeProbabilityIsovalue(targetProbability);
+      if (typeof raymarchUniforms !== 'undefined') {
+        raymarchUniforms.u_isoThreshold.value = threshold;
+      }
+    }
+
+    function scheduleIsoThresholdUpdate() {
+      if (isoRafId !== null) return;
+      isoRafId = requestAnimationFrame(() => {
+        isoRafId = null;
+        updateIsoThreshold();
+      });
+    }
+
+    function updatePhysicsConstants() {
+      mu = (ELECTRON_MASS * protonMass) / (ELECTRON_MASS + protonMass);
+      a_mu = 1.0 / mu;
+      document.getElementById('val-mu').innerText = mu.toFixed(6);
+      document.getElementById('val-amu').innerText = (a_mu * PM_PER_BOHR).toFixed(2);
+
+      for (let i = 0; i < orbitals.length; i++) {
+        const orb = orbitals[i];
+        orb.norm = computeNormalization(orb.n, orb.l, orb.m);
+      }
+      lastRMax = -1.0;
+      isoGridValid = false;
+      updateShaderUniforms();
+      updateIsoThreshold();
+    }
+
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2500);
+
+    const DEFAULT_RADIUS = 32.0;
+    let orbitRadius = DEFAULT_RADIUS;
+    let orbitTheta = 0.6;
+    let orbitPhi = 0.4;
+
+    function updateOrbitCamera() {
+      const cosPhi = Math.cos(orbitPhi);
+      camera.position.x = orbitRadius * cosPhi * Math.sin(orbitTheta);
+      camera.position.y = orbitRadius * Math.sin(orbitPhi);
+      camera.position.z = orbitRadius * cosPhi * Math.cos(orbitTheta);
+      camera.lookAt(0, 0, 0);
+    }
+
+    function updateFlyCameraRotation() {
+      camera.rotation.order = 'YXZ';
+      camera.rotation.set(flyPitch, flyYaw, 0);
+    }
+
+    function updateNavHintUI() {
+      const hint = document.getElementById('nav-hint');
+      if (!hint) return;
+
+      if (navMode === 'orbit') {
+        hint.innerHTML = `
+          <div class="nav-hint-header">
+            <span class="nav-hint-title">Camera Nav</span>
+            <span class="nav-hint-badge">Orbit</span>
+          </div>
+          <div class="nav-row"><span class="nav-row-action">Rotate View</span><span class="nav-row-keys"><span class="key">Drag</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Zoom In/Out</span><span class="nav-row-keys"><span class="key">Wheel</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Orbit Pan</span><span class="nav-row-keys"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Switch Mode</span><span class="nav-row-keys"><span class="key">F</span> Fly</span></div>
+          <div class="nav-row"><span class="nav-row-action">Axes Guides</span><span class="nav-row-keys"><span class="key">X</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Scale Rings</span><span class="nav-row-keys"><span class="key">Z</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Toggle UI</span><span class="nav-row-keys"><span class="key">H</span></span></div>
+        `;
+      } else {
+        hint.innerHTML = `
+          <div class="nav-hint-header">
+            <span class="nav-hint-title">Camera Nav</span>
+            <span class="nav-hint-badge" style="background:rgba(16,185,129,0.2); color:#34d399; border-color:rgba(16,185,129,0.4);">Fly</span>
+          </div>
+          <div class="nav-row"><span class="nav-row-action">Look / Aim</span><span class="nav-row-keys"><span class="key">Mouse Lock</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Release Mouse</span><span class="nav-row-keys"><span class="key">Esc</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Walk / Strafe</span><span class="nav-row-keys"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Ascend / Desc</span><span class="nav-row-keys"><span class="key">Spc</span><span class="key">C</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Sprint Boost</span><span class="nav-row-keys"><span class="key">Shift</span></span></div>
+          <div class="nav-row"><span class="nav-row-action">Switch Mode</span><span class="nav-row-keys"><span class="key">F</span> Orbit</span></div>
+          <div class="nav-row"><span class="nav-row-action">Toggle UI</span><span class="nav-row-keys"><span class="key">H</span></span></div>
+        `;
+      }
+    }
+
+    // Pointer Lock Helper to lock the mouse within the window
+    function requestFlyPointerLock() {
+      if (navMode !== 'fly') return;
+      const el = renderer?.domElement || document.body;
+      if (el && el.requestPointerLock && document.pointerLockElement !== el) {
+        try {
+          const res = el.requestPointerLock();
+          if (res && res.catch) res.catch(() => {});
+        } catch (err) {}
+      }
+    }
+
+    function setNavMode(mode, sync = true) {
+      if (mode === navMode && !isInitializing) return;
+      navMode = mode;
+
+      if (navMode === 'fly') {
+        const lookDir = new THREE.Vector3();
+        camera.getWorldDirection(lookDir);
+        flyPitch = Math.asin(Math.min(0.999, Math.max(-0.999, lookDir.y)));
+        flyYaw = Math.atan2(-lookDir.x, -lookDir.z);
+        updateFlyCameraRotation();
+
+        // Lock mouse cursor to window in Fly mode
+        if (!isInitializing) {
+          requestFlyPointerLock();
+        }
+      } else {
+        // Release pointer lock when leaving Fly mode
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+        orbitRadius = Math.max(4.0, Math.min(500.0, camera.position.length()));
+        orbitPhi = Math.asin(Math.min(0.49 * Math.PI, Math.max(-0.49 * Math.PI, camera.position.y / orbitRadius)));
+        orbitTheta = Math.atan2(camera.position.x, camera.position.z);
+        updateOrbitCamera();
+      }
+
+      const navBtn = document.getElementById('nav-mode-btn');
+      if (navBtn) {
+        navBtn.innerText = navMode === 'orbit' ? 'Cam: Orbit' : 'Cam: Free Fly';
+        navBtn.classList.toggle('btn-active-state', navMode === 'fly');
+      }
+
+      updateNavHintUI();
+      updateScaleMeasure();
+      if (sync) scheduleURLUpdate();
+    }
+
+    updateOrbitCamera();
+
+    const renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: "high-performance"});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.autoClear = false;
+    container.appendChild(renderer.domElement);
+
+    // Re-lock if user clicks the canvas in Fly mode after releasing via Escape
+    renderer.domElement.addEventListener('click', () => {
+      if (navMode === 'fly' && document.pointerLockElement !== renderer.domElement) {
+        requestFlyPointerLock();
+      }
+    });
+
+    // Cartesian Axes and Spatial Scale Guides Scene
+    const axesScene = new THREE.Scene();
+
+    function createLabelSprite(text, color, bgColor = 'rgba(15, 23, 42, 0.85)') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 160;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = bgColor;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(4, 4, 152, 56, 8);
+      else ctx.rect(4, 4, 152, 56);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 80, 32);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const spriteMaterial = new THREE.SpriteMaterial({map: texture, depthTest: false});
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.scale.set(3.8, 1.5, 1);
+      return sprite;
+    }
+
+    const axesGroup = new THREE.Group();
+    const axisLength = 36.0;
+    const negLength = 24.0;
+    const shaftRadius = 0.08;
+    const coneRadius = 0.35;
+    const coneHeight = 1.2;
+
+    function buildAxis(dir, colorHex, posLabel, negLabel) {
+      const axisSubgroup = new THREE.Group();
+      const mat = new THREE.MeshBasicMaterial({color: colorHex, transparent: true, opacity: 0.9});
+      const negMat = new THREE.MeshBasicMaterial({color: colorHex, transparent: true, opacity: 0.35});
+
+      const shaftGeo = new THREE.CylinderGeometry(shaftRadius, shaftRadius, axisLength, 12);
+      const shaft = new THREE.Mesh(shaftGeo, mat);
+      shaft.position.y = axisLength / 2;
+
+      const coneGeo = new THREE.ConeGeometry(coneRadius, coneHeight, 16);
+      const cone = new THREE.Mesh(coneGeo, mat);
+      cone.position.y = axisLength;
+
+      const negShaftGeo = new THREE.CylinderGeometry(shaftRadius * 0.7, shaftRadius * 0.7, negLength, 8);
+      const negShaft = new THREE.Mesh(negShaftGeo, negMat);
+      negShaft.position.y = -negLength / 2;
+
+      axisSubgroup.add(shaft);
+      axisSubgroup.add(cone);
+      axisSubgroup.add(negShaft);
+
+      if (dir === 'X') axisSubgroup.rotation.z = -Math.PI / 2;
+      else if (dir === 'Z') axisSubgroup.rotation.x = Math.PI / 2;
+
+      const posSprite = createLabelSprite(posLabel, colorHex);
+      const negSprite = createLabelSprite(negLabel, colorHex, 'rgba(15, 23, 42, 0.6)');
+      negSprite.scale.set(2.8, 1.1, 1);
+
+      if (dir === 'X') {
+        posSprite.position.set(axisLength + 2.5, 0, 0);
+        negSprite.position.set(-negLength - 2.0, 0, 0);
+      } else if (dir === 'Y') {
+        posSprite.position.set(0, axisLength + 2.5, 0);
+        negSprite.position.set(0, -negLength - 2.0, 0);
+      } else if (dir === 'Z') {
+        posSprite.position.set(0, 0, axisLength + 2.8);
+        negSprite.position.set(0, 0, -negLength - 2.0);
+      }
+
+      axesGroup.add(axisSubgroup);
+      axesGroup.add(posSprite);
+      axesGroup.add(negSprite);
+    }
+
+    buildAxis('X', '#ef4444', '+X', '-X');
+    buildAxis('Y', '#22c55e', '+Y', '-Y');
+    buildAxis('Z', '#3b82f6', '+Z (m)', '-Z');
+
+    axesScene.add(axesGroup);
+
+    // 3D Spatial Scale Rings & Reticle Overlay
+    const scaleGroup = new THREE.Group();
+    axesScene.add(scaleGroup);
+
+    function createScaleBadge(text, color = '#94a3b8', bg = 'rgba(15, 23, 42, 0.75)') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 160;
+      canvas.height = 56;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = bg;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(3, 3, 154, 50, 8);
+      else ctx.rect(3, 3, 154, 50);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 80, 28);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const spriteMaterial = new THREE.SpriteMaterial({map: texture, depthTest: false, transparent: true, opacity: 0.9});
+      return new THREE.Sprite(spriteMaterial);
+    }
+
+    function rebuildScaleRings(bRadius) {
+      while (scaleGroup.children.length > 0) {
+        const obj = scaleGroup.children[0];
+        scaleGroup.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (obj.material.map) obj.material.map.dispose();
+          obj.material.dispose();
+        }
+      }
+
+      const PM_PER_UNIT = a_mu * PM_PER_BOHR; // ~52.95 pm per world unit
+      // Clean picometer intervals (omitting the first Bohr radius marker)
+      const candidateRadiiPm = [100, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 7500, 10000, 15000, 20000];
+      const maxPm = bRadius * 0.92 * PM_PER_UNIT;
+      const filtered = candidateRadiiPm.filter(r => r <= maxPm);
+
+      let selected = [];
+      if (filtered.length <= 6) {
+        selected = filtered;
+      } else {
+        const step = Math.ceil(filtered.length / 5);
+        for (let i = 0; i < filtered.length; i += step) {
+          selected.push(filtered[i]);
+        }
+        if (!selected.includes(filtered[filtered.length - 1])) {
+          selected.push(filtered[filtered.length - 1]);
+        }
+      }
+
+      const segments = 128;
+      const planes = ['XY', 'XZ', 'YZ'];
+
+      selected.forEach(rVal => {
+        const worldR = rVal / PM_PER_UNIT;
+        const colorHex = 0x64748b;
+        const opacity = 0.32;
+
+        // Create distance rings across all three orthogonal planes (XY, XZ, YZ)
+        planes.forEach(plane => {
+          const positions = new Float32Array((segments + 1) * 3);
+          for (let i = 0; i <= segments; i++) {
+            const th = (i / segments) * Math.PI * 2;
+            const c = worldR * Math.cos(th);
+            const s = worldR * Math.sin(th);
+            if (plane === 'XY') {
+              positions[i * 3] = c;
+              positions[i * 3 + 1] = s;
+              positions[i * 3 + 2] = 0;
+            } else if (plane === 'XZ') {
+              positions[i * 3] = c;
+              positions[i * 3 + 1] = 0;
+              positions[i * 3 + 2] = s;
+            } else if (plane === 'YZ') {
+              positions[i * 3] = 0;
+              positions[i * 3 + 1] = c;
+              positions[i * 3 + 2] = s;
+            }
+          }
+          const ringGeo = new THREE.BufferGeometry();
+          ringGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+          const ringMat = new THREE.LineBasicMaterial({
+            color: colorHex,
+            transparent: true,
+            opacity: opacity,
+            depthWrite: false
+          });
+          scaleGroup.add(new THREE.Line(ringGeo, ringMat));
+        });
+
+        // 3D Axis-alignment cross tick marks at ring piercing points
+        const tickLen = Math.max(0.35, worldR * 0.025);
+        const tickGeo = new THREE.BufferGeometry();
+        const tickPos = new Float32Array([
+          // Ticks on +/- X
+          worldR, -tickLen, 0,  worldR, tickLen, 0,
+          worldR, 0, -tickLen,  worldR, 0, tickLen,
+          -worldR, -tickLen, 0, -worldR, tickLen, 0,
+          -worldR, 0, -tickLen, -worldR, 0, tickLen,
+
+          // Ticks on +/- Y
+          -tickLen, worldR, 0,  tickLen, worldR, 0,
+          0, worldR, -tickLen,  0, worldR, tickLen,
+          -tickLen, -worldR, 0, tickLen, -worldR, 0,
+          0, -worldR, -tickLen, 0, -worldR, tickLen,
+
+          // Ticks on +/- Z
+          -tickLen, 0, worldR,  tickLen, 0, worldR,
+          0, -tickLen, worldR,  0, tickLen, worldR,
+          -tickLen, 0, -worldR, tickLen, 0, -worldR,
+          0, -tickLen, -worldR, 0, tickLen, -worldR
+        ]);
+        tickGeo.setAttribute('position', new THREE.BufferAttribute(tickPos, 3));
+        const tickMat = new THREE.LineBasicMaterial({
+          color: colorHex,
+          transparent: true,
+          opacity: Math.min(1.0, opacity + 0.25),
+          depthWrite: false
+        });
+        scaleGroup.add(new THREE.LineSegments(tickGeo, tickMat));
+
+        // Spatial label badge with units in picometers (pm)
+        const labelAngle = 0.46;
+        const badgeText = `${rVal} pm`;
+        const badgeColor = '#94a3b8';
+        const badgeSprite = createScaleBadge(badgeText, badgeColor, 'rgba(15, 23, 42, 0.7)');
+
+        const spriteScale = Math.max(1.8, Math.min(5.5, worldR * 0.22));
+        badgeSprite.scale.set(spriteScale * 1.5, spriteScale * 0.55, 1);
+        badgeSprite.position.set(worldR * Math.cos(labelAngle), worldR * Math.sin(labelAngle), 0);
+        scaleGroup.add(badgeSprite);
+      });
+    }
+
+    let lastScaleR = -1;
+    let lastScaleH = -1;
+
+    function updateScaleMeasure() {
+      const camDist = (navMode === 'orbit') ? orbitRadius : Math.max(1.0, camera.position.length());
+      if (Math.abs(camDist - lastScaleR) < 1e-3 && window.innerHeight === lastScaleH) return;
+      lastScaleR = camDist;
+      lastScaleH = window.innerHeight;
+
+      const halfFovRad = (camera.fov * 0.5 * Math.PI) / 180.0;
+      const planeHeightWorld = 2.0 * camDist * Math.tan(halfFovRad);
+      const pxPerWorldUnit = window.innerHeight / planeHeightWorld;
+
+      const PM_PER_WORLD_UNIT = a_mu * PM_PER_BOHR; // ~52.95 pm
+      const pxPerPm = pxPerWorldUnit / PM_PER_WORLD_UNIT;
+
+      // Calculate nice metric step size in picometers for the screen ruler
+      const targetPm = 95.0 / pxPerPm;
+      const exponent = Math.floor(Math.log10(targetPm));
+      const fraction = targetPm / Math.pow(10, exponent);
+
+      let niceFactor = 1;
+      if (fraction >= 7.5) niceFactor = 10;
+      else if (fraction >= 3.5) niceFactor = 5;
+      else if (fraction >= 1.5) niceFactor = 2;
+      else niceFactor = 1;
+
+      const chosenPm = niceFactor * Math.pow(10, exponent);
+      const barPx = Math.max(20, Math.round(chosenPm * pxPerPm));
+
+      const pmStr = chosenPm >= 10 ? `${Math.round(chosenPm)} pm` : `${chosenPm.toFixed(1)} pm`;
+      const camDistPm = Math.round(camDist * PM_PER_WORLD_UNIT);
+
+      const barEl = document.getElementById('scale-ruler-bar');
+      const bohrLabel = document.getElementById('scale-bohr-label');
+      const metricLabel = document.getElementById('scale-metric-label');
+      const zoomDist = document.getElementById('scale-zoom-dist');
+
+      if (barEl) barEl.style.width = barPx + 'px';
+      if (bohrLabel) bohrLabel.innerText = pmStr;
+      if (metricLabel) metricLabel.innerText = pmStr;
+      if (zoomDist) zoomDist.innerHTML = `dist: ${camDistPm} pm`;
+    }
+
+    function setGuidesVisibility(visible, sync = true) {
+      guidesVisible = visible;
+      axesGroup.visible = visible;
+
+      const toggleBtn = document.getElementById('toggle-axes-btn');
+      if (toggleBtn) {
+        toggleBtn.innerText = visible ? 'Axes: ON' : 'Axes: OFF';
+        toggleBtn.classList.toggle('btn-active-state', visible);
+      }
+
+      const checkbox = document.getElementById('toggle-axes');
+      if (checkbox) checkbox.checked = visible;
+
+      const axisLegendGroup = document.getElementById('axis-legend-group');
+      if (axisLegendGroup) {
+        axisLegendGroup.style.opacity = visible ? '1.0' : '0.25';
+      }
+      if (sync) scheduleURLUpdate();
+    }
+
+    function setScaleVisibility(visible, sync = true) {
+      scaleVisible = visible;
+      scaleGroup.visible = visible;
+
+      const toggleBtn = document.getElementById('toggle-scale-btn');
+      if (toggleBtn) {
+        toggleBtn.innerText = visible ? 'Scale: ON' : 'Scale: OFF';
+        toggleBtn.classList.toggle('btn-active-state', visible);
+      }
+
+      const checkbox = document.getElementById('toggle-scale');
+      if (checkbox) checkbox.checked = visible;
+
+      const scaleLegendGroup = document.getElementById('scale-legend-group');
+      if (scaleLegendGroup) {
+        scaleLegendGroup.style.opacity = visible ? '1.0' : '0.25';
+      }
+      if (sync) scheduleURLUpdate();
+    }
+
+    document.getElementById('toggle-axes-btn').onclick = () => setGuidesVisibility(!guidesVisible);
+    document.getElementById('toggle-axes').onchange = (e) => setGuidesVisibility(e.target.checked);
+    document.getElementById('toggle-scale-btn').onclick = () => setScaleVisibility(!scaleVisible);
+    document.getElementById('toggle-scale').onchange = (e) => setScaleVisibility(e.target.checked);
+    document.getElementById('nav-mode-btn').onclick = () => setNavMode(navMode === 'orbit' ? 'fly' : 'orbit');
+
+    // ==========================================
+    // RAYMARCHING SHADER WITH TWO-SIDED ISOSURFACES
+    // ==========================================
+    const quadGeometry = new THREE.PlaneGeometry(2, 2);
+
+    const raymarchVertexShader = `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position, 1.0);
+      }
+    `;
+
+    const raymarchFragmentShader = `
+      precision highp float;
+      varying vec2 vUv;
+
+      uniform vec3 u_camPos;
+      uniform mat4 u_invProjView;
+      uniform float u_time;
+      uniform float u_a_mu;
+      uniform float u_gain;
+      uniform float u_peakDensity;
+      uniform int u_numOrbitals;
+      uniform int u_maxSteps;
+      uniform int u_displayMode;
+      uniform float u_isoThreshold;
+      uniform float u_isoAlpha;
+      uniform float u_boundingRadius;
+
+      uniform int u_n[${MAX_ORBITALS}];
+      uniform int u_l[${MAX_ORBITALS}];
+      uniform int u_m[${MAX_ORBITALS}];
+      uniform vec2 u_coeff[${MAX_ORBITALS}]; 
+      uniform float u_norm[${MAX_ORBITALS}];
+
+      #define PI 3.14159265359
+
+      float getIGN(vec2 screenPos) {
+        vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+        return fract(magic.z * fract(dot(screenPos, magic.xy)));
+      }
+
+      float assocLaguerre(int p, float alpha, float x) {
+        if (p <= 0) return 1.0;
+        float L0 = 1.0;
+        float L1 = 1.0 + alpha - x;
+        if (p == 1) return L1;
+        float Lk = 0.0;
+        for (int k = 1; k < 8; ++k) {
+          if (k >= p) break;
+          float fk = float(k);
+          Lk = ((2.0 * fk + 1.0 + alpha - x) * L1 - (fk + alpha) * L0) / (fk + 1.0);
+          L0 = L1;
+          L1 = Lk;
+        }
+        return L1;
+      }
+
+      float assocLegendre(int l, int m, float x) {
+        if (l == 0) return 1.0;
+        if (l == 1 && m == 0) return x;
+
+        float pmm = 1.0;
+        float somx2 = sqrt(max(0.0, 1.0 - x * x));
+        float fact = 1.0;
+        for (int i = 1; i <= 8; ++i) {
+          if (i > m) break;
+          pmm *= fact * somx2;
+          fact += 2.0;
+        }
+        if (l == m) return pmm;
+
+        float pm1 = x * float(2 * m + 1) * pmm;
+        if (l == m + 1) return pm1;
+
+        float pl = 0.0;
+        float p_prev2 = pmm;
+        float p_prev1 = pm1;
+        int maxK = l - m;
+        for (int k = 2; k <= 8; ++k) {
+          if (k > maxK) break;
+          int cur_l = m + k;
+          float fl = float(cur_l);
+          float fm = float(m);
+          pl = ((2.0 * fl - 1.0) * x * p_prev1 - (fl + fm - 1.0) * p_prev2) / float(k);
+          p_prev2 = p_prev1;
+          p_prev1 = pl;
+        }
+        return pl;
+      }
+
+      vec2 evalPsi(vec3 p, float t_time) {
+        float r = max(length(p), 1e-5);
+        float cosTheta = clamp(p.z / r, -1.0, 1.0);
+        float phi = atan(p.y, p.x);
+        vec2 psiTotal = vec2(0.0);
+
+        for (int k = 0; k < ${MAX_ORBITALS}; ++k) {
+          if (k >= u_numOrbitals) break;
+
+          int n = u_n[k];
+          int l = u_l[k];
+          int m = u_m[k];
+          int absM = abs(m);
+
+          float rho = (2.0 * r) / (float(n) * u_a_mu);
+          float L = assocLaguerre(n - l - 1, float(2 * l + 1), rho);
+          float P = assocLegendre(l, absM, cosTheta);
+
+          float rho_pow_l = 1.0;
+          if (l == 1) rho_pow_l = rho;
+          else if (l == 2) rho_pow_l = rho * rho;
+          else if (l == 3) rho_pow_l = rho * rho * rho;
+          else if (l > 3) rho_pow_l = pow(max(rho, 1e-4), float(l));
+
+          float R_unnorm = rho_pow_l * exp(-0.5 * rho) * L;
+          float cs = (m > 0 && (m % 2 != 0)) ? -1.0 : 1.0;
+          float angle_m = float(m) * phi;
+          float omega_n = 2.4 / float(n * n);
+          float totalPhase = angle_m + omega_n * t_time + u_coeff[k].y;
+
+          float amp = u_norm[k] * R_unnorm * P * cs * u_coeff[k].x;
+          psiTotal += vec2(amp * cos(totalPhase), amp * sin(totalPhase));
+        }
+        return psiTotal;
+      }
+
+      float evalProb(vec3 p, float t_time) {
+        vec2 psi = evalPsi(p, t_time);
+        return dot(psi, psi);
+      }
+
+      vec3 phaseToRGB(float phase) {
+        float hue = fract(phase * 0.15915494309 + 1.0);
+        float r = clamp(abs(hue * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+        float g = clamp(2.0 - abs(hue * 6.0 - 2.0), 0.0, 1.0);
+        float b = clamp(2.0 - abs(hue * 6.0 - 4.0), 0.0, 1.0);
+        return mix(vec3(r, g, b), vec3(1.0), 0.16);
+      }
+
+      vec3 densityToRGB(float normalizedDensity) {
+        float val = clamp(normalizedDensity, 0.0, 1.0);
+        vec3 c0 = vec3(0.04, 0.07, 0.22);
+        vec3 c1 = vec3(0.0, 0.65, 0.95);
+        vec3 c2 = vec3(1.0, 0.68, 0.10);
+        vec3 c3 = vec3(1.0, 1.0, 0.98);
+
+        if (val < 0.28) {
+          return mix(c0, c1, val * 3.57142857);
+        } else if (val < 0.68) {
+          return mix(c1, c2, (val - 0.28) * 2.5);
+        } else {
+          return mix(c2, c3, (val - 0.68) * 3.125);
+        }
+      }
+
+      vec2 intersectSphere(vec3 ro, vec3 rd, float radius) {
+        float b = dot(ro, rd);
+        float c = dot(ro, ro) - radius * radius;
+        float h = b * b - c;
+        if (h < 0.0) return vec2(-1.0);
+        float sqrth = sqrt(h);
+        return vec2(-b - sqrth, -b + sqrth);
+      }
+
+      void main() {
+        vec4 ndc = vec4(vUv * 2.0 - 1.0, 1.0, 1.0);
+        vec4 worldFar = u_invProjView * ndc;
+        worldFar /= worldFar.w;
+        vec3 rayDir = normalize(worldFar.xyz - u_camPos);
+        vec3 rayOrigin = u_camPos;
+
+        float boundingRadius = u_boundingRadius;
+        vec2 hit = intersectSphere(rayOrigin, rayDir, boundingRadius);
+
+        if (hit.y < 0.0) {
+          gl_FragColor = vec4(0.015, 0.02, 0.04, 1.0);
+          return;
+        }
+
+        float tNear = max(hit.x, 0.0);
+        float tFar = hit.y;
+        if (tFar <= tNear) {
+          gl_FragColor = vec4(0.015, 0.02, 0.04, 1.0);
+          return;
+        }
+        float baseStepSize = (tFar - tNear) / float(u_maxSteps);
+
+        float dither = getIGN(gl_FragCoord.xy);
+        
+        float initR = length(rayOrigin + rayDir * tNear);
+        float initScale = clamp(initR / (boundingRadius * 0.35), 0.25, 1.5);
+        float t = tNear + dither * baseStepSize * initScale;
+
+        vec4 accumColor = vec4(0.0);
+
+        if (u_displayMode == 2) {
+          float prevVal = evalProb(rayOrigin + rayDir * t, u_time);
+          bool wasInside = (prevVal >= u_isoThreshold);
+
+          vec2 k_vec = vec2(1.0, -1.0);
+          vec3 lightKey = normalize(vec3(0.5, 0.8, 0.6));
+          vec3 lightFill = normalize(vec3(-0.5, -0.2, -0.5));
+          vec3 hKey = normalize(lightKey - rayDir);
+          float alpha = u_isoAlpha;
+
+          for (int step = 0; step < 1800; ++step) {
+            if (step >= u_maxSteps || t > tFar || accumColor.a > 0.96) break;
+
+            vec3 p = rayOrigin + rayDir * t;
+            float r = length(p);
+            float stepScale = clamp(r / (boundingRadius * 0.35), 0.25, 1.5);
+            float dt = baseStepSize * stepScale;
+
+            float curVal = evalProb(p, u_time);
+            bool isInside = (curVal >= u_isoThreshold);
+
+            // Two-sided isosurface check: triggers both on entering and exiting the boundary
+            if (isInside != wasInside) {
+              float tA = t - dt;
+              float tB = t;
+              for (int b = 0; b < 8; ++b) {
+                float tMid = 0.5 * (tA + tB);
+                float valMid = evalProb(rayOrigin + rayDir * tMid, u_time);
+                if ((valMid >= u_isoThreshold) == isInside) tB = tMid;
+                else tA = tMid;
+              }
+              float tHit = 0.5 * (tA + tB);
+              vec3 pHit = rayOrigin + rayDir * tHit;
+
+              float e = max(0.035 * u_a_mu, length(pHit) * 0.006);
+
+              vec3 grad = k_vec.xyy * evalProb(pHit + k_vec.xyy * e, u_time) +
+                          k_vec.yyx * evalProb(pHit + k_vec.yyx * e, u_time) +
+                          k_vec.yxy * evalProb(pHit + k_vec.yxy * e, u_time) +
+                          k_vec.xxx * evalProb(pHit + k_vec.xxx * e, u_time);
+              
+              float gLen = length(grad);
+              vec3 N = (gLen > 1e-9) ? -grad / gLen : -rayDir;
+              // Orient normal to always face the incident ray for proper two-sided shading
+              if (dot(N, -rayDir) < 0.0) N = -N;
+
+              vec2 psiHit = evalPsi(pHit, u_time);
+              float phase = atan(psiHit.y, psiHit.x);
+              vec3 baseCol = phaseToRGB(phase);
+
+              float diff = 0.65 * max(dot(N, lightKey), 0.0) + 0.35 * max(dot(N, lightFill), 0.0);
+              float spec = pow(max(dot(N, hKey), 0.0), 32.0) * 0.55;
+              float fresnel = pow(1.0 - max(dot(N, -rayDir), 0.0), 2.2) * 0.55;
+
+              vec3 surfCol = baseCol * (0.52 + 0.55 * diff) + vec3(1.0) * spec + baseCol * fresnel;
+              float remainA = 1.0 - accumColor.a;
+
+              accumColor.rgb += remainA * surfCol * alpha;
+              accumColor.a += remainA * alpha;
+
+              if (accumColor.a > 0.95) break;
+            }
+
+            wasInside = isInside;
+            t += dt;
+          }
+        } else {
+          float invBounding = 1.0 / max(boundingRadius * 0.12, 1.0);
+          float invPeakDensity = 1.0 / max(u_peakDensity, 1e-15);
+          float gainColor = u_gain * 0.2;
+
+          for (int step = 0; step < 1800; ++step) {
+            if (step >= u_maxSteps || t > tFar || accumColor.a > 0.98) break;
+
+            vec3 p = rayOrigin + rayDir * t;
+            float r = length(p);
+            float stepScale = clamp(r / (boundingRadius * 0.35), 0.25, 1.5);
+            float dt = baseStepSize * stepScale;
+
+            vec2 psiTotal = evalPsi(p, u_time);
+            float prob = dot(psiTotal, psiTotal);
+            float normProb = prob * invPeakDensity;
+
+            if (normProb > 0.0001) {
+              float clampedNorm = min(normProb, 1.0);
+              float remainA = 1.0 - accumColor.a;
+              float stepFrac = dt * invBounding;
+              float gainFrac = u_gain * 0.45 * stepFrac;
+
+              if (u_displayMode == 0) {
+                float phase = atan(psiTotal.y, psiTotal.x);
+                vec3 sampleColor = phaseToRGB(phase);
+
+                float amp = sqrt(clampedNorm);
+                float visualAmp = pow(amp, 0.65);
+                float alpha = 1.0 - exp(-visualAmp * gainFrac);
+                vec3 emitColor = sampleColor * (0.35 + visualAmp * 1.65);
+
+                accumColor.rgb += remainA * emitColor * alpha * 1.4;
+                accumColor.a += remainA * alpha;
+              } else {
+                float densityMetric = sqrt(clampedNorm);
+                float colorVal = clamp(pow(clampedNorm, 0.45) * gainColor, 0.0, 1.0);
+                vec3 sampleColor = densityToRGB(colorVal);
+
+                float alpha = 1.0 - exp(-densityMetric * gainFrac);
+                vec3 emitColor = sampleColor * (0.6 + densityMetric * 1.8);
+
+                accumColor.rgb += remainA * emitColor * alpha * 1.4;
+                accumColor.a += remainA * alpha;
+              }
+            }
+
+            t += dt;
+          }
+        }
+
+        float distToProton = length(cross(rayDir, -rayOrigin));
+        if (distToProton < 0.35) {
+          float protonGlow = pow(1.0 - distToProton * 2.85714, 3.0) * 0.9;
+          accumColor.rgb += vec3(1.0, 0.9, 0.6) * protonGlow * (1.0 - accumColor.a * 0.6);
+        }
+
+        vec3 bgColor = vec3(0.015, 0.02, 0.04);
+        gl_FragColor = vec4(accumColor.rgb + (1.0 - accumColor.a) * bgColor, 1.0);
+      }
+    `;
+
+    const raymarchUniforms = {
+      u_camPos: {value: camera.position},
+      u_invProjView: {value: new THREE.Matrix4()},
+      u_time: {value: 0.0},
+      u_a_mu: {value: a_mu},
+      u_gain: {value: 5.0},
+      u_peakDensity: {value: 0.318},
+      u_numOrbitals: {value: 0},
+      u_maxSteps: {value: 75},
+      u_displayMode: {value: 0},
+      u_isoThreshold: {value: 0.001},
+      u_isoAlpha: {value: 0.85},
+      u_boundingRadius: {value: 24.0 * a_mu},
+      u_n: {value: new Array(MAX_ORBITALS).fill(1)},
+      u_l: {value: new Array(MAX_ORBITALS).fill(0)},
+      u_m: {value: new Array(MAX_ORBITALS).fill(0)},
+      u_coeff: {value: new Array(MAX_ORBITALS).fill(0).map(() => new THREE.Vector2(1.0, 0.0))},
+      u_norm: {value: new Array(MAX_ORBITALS).fill(1.0)}
+    };
+
+    const raymarchMaterial = new THREE.ShaderMaterial({
+      vertexShader: raymarchVertexShader,
+      fragmentShader: raymarchFragmentShader,
+      uniforms: raymarchUniforms,
+      depthWrite: false,
+      depthTest: false
+    });
+
+    const quadMesh = new THREE.Mesh(quadGeometry, raymarchMaterial);
+    quadMesh.frustumCulled = false;
+    scene.add(quadMesh);
+
+    const PRESETS = {
+      lyman: [
+        {n: 1, l: 0, m: 0, rawAmp: 1.0, phase: 0.0, enabled: true},
+        {n: 2, l: 1, m: 0, rawAmp: 1.0, phase: 0.0, enabled: true}
+      ]
+    };
+
+    function updateIsoPercentDisplay(val, sync = true) {
+      val = Math.max(10, Math.min(99, Math.round(val)));
+      targetProbability = val / 100.0;
+      const pctStr = val + '%';
+
+      const modeBtnIso = document.getElementById('mode-btn-iso');
+      if (modeBtnIso) modeBtnIso.innerText = `Boundary (${pctStr})`;
+
+      const label = document.getElementById('iso-percent-label');
+      if (label) label.innerText = pctStr;
+
+      const numInput = document.getElementById('iso-percent-num');
+      if (numInput && parseInt(numInput.value) !== val) numInput.value = val;
+
+      const slider = document.getElementById('iso-percent-slider');
+      if (slider && parseInt(slider.value) !== val) slider.value = val;
+
+      document.querySelectorAll('.iso-quick-btn').forEach(btn => {
+        btn.classList.toggle('btn-active-state', Math.abs(parseFloat(btn.dataset.val) - val) < 0.1);
+      });
+
+      updateIsoThreshold();
+
+      if (currentMode === 'iso') {
+        const mathFormula = document.getElementById('mode-math-formula');
+        if (mathFormula) {
+          mathFormula.innerHTML = '&int;<sub>|Ψ|² &ge; &rho;<sub>iso</sub></sub> |Ψ(<b>r</b>, <i>t</i>)|² <i>d</i>³<b>r</b> = ' + pctStr;
+        }
+        const mathDesc = document.getElementById('mode-math-desc');
+        if (mathDesc) {
+          mathDesc.innerHTML = 'Boundary surface enclosing ' + pctStr + ' detection probability. Lobes are shaded with phase &theta; = arg(Ψ).';
+        }
+      }
+      if (sync) scheduleURLUpdate();
+    }
+
+    function setDisplayMode(mode, sync = true) {
+      currentMode = mode;
+      const isPsi = (mode === 'psi');
+      const isProb = (mode === 'prob');
+      const isIso = (mode === 'iso');
+
+      raymarchUniforms.u_displayMode.value = isPsi ? 0 : (isProb ? 1 : 2);
+
+      document.getElementById('mode-btn-psi').classList.toggle('active', isPsi);
+      document.getElementById('mode-btn-prob').classList.toggle('active', isProb);
+      document.getElementById('mode-btn-iso').classList.toggle('active', isIso);
+
+      const mathTitle = document.getElementById('mode-math-title');
+      const mathFormula = document.getElementById('mode-math-formula');
+      const mathDesc = document.getElementById('mode-math-desc');
+      const legendTitle = document.getElementById('legend-title');
+      const legendGradient = document.getElementById('legend-gradient');
+      const legendLabels = document.getElementById('legend-labels');
+
+      const gainRow = document.getElementById('row-gain');
+      const isoPercentRow = document.getElementById('row-iso-percent');
+      const isoAlphaRow = document.getElementById('row-iso-alpha');
+
+      if (gainRow) gainRow.style.display = isIso ? 'none' : 'flex';
+      if (isoPercentRow) isoPercentRow.style.display = isIso ? 'flex' : 'none';
+      if (isoAlphaRow) isoAlphaRow.style.display = isIso ? 'flex' : 'none';
+
+      if (isPsi) {
+        mathTitle.innerHTML = '<b>Wavefunction Evolution:</b>';
+        mathFormula.innerHTML = 'Ψ(<b>r</b>, <i>t</i>) = &sum; <i>c</i><sub><i>k</i></sub> &psi;<sub><i>k</i></sub>(<b>r</b>) <i>e</i><sup>&minus;<i>iE</i><sub><i>k</i></sub><i>t</i>/ℏ</sup>';
+        mathDesc.innerHTML = 'Color encodes complex phase &theta; = arg(Ψ); brightness encodes amplitude.';
+
+        legendTitle.innerText = 'Quantum Phase arg(Ψ)';
+        legendGradient.style.background = 'linear-gradient(to right, #00ffff, #3b82f6, #9333ea, #ef4444, #f59e0b, #10b981, #00ffff)';
+        legendLabels.innerHTML = `
+          <span>&minus;π</span>
+          <span>&minus;π/2</span>
+          <span style="color:#f87171; font-weight:bold;">0</span>
+          <span>+π/2</span>
+          <span>+π</span>
+        `;
+      } else if (isProb) {
+        mathTitle.innerHTML = '<b>Born Rule Probability Density:</b>';
+        mathFormula.innerHTML = '<i>P</i>(<b>r</b>, <i>t</i>) = |Ψ(<b>r</b>, <i>t</i>)|²';
+        mathDesc.innerHTML = 'Physical detection probability. Stationary states are constant in time.';
+
+        legendTitle.innerText = 'Probability Density |Ψ|²';
+        legendGradient.style.background = 'linear-gradient(to right, #0a1238, #00a6f3, #ffae19, #ffffff)';
+        legendLabels.innerHTML = `
+          <span>0 (Node)</span>
+          <span>Low</span>
+          <span>Medium</span>
+          <span>High</span>
+          <span>Peak</span>
+        `;
+      } else {
+        const pctStr = Math.round(targetProbability * 100) + '%';
+        mathTitle.innerHTML = '<b>Enclosed Probability Boundary Surface:</b>';
+        mathFormula.innerHTML = '&int;<sub>|Ψ|² &ge; &rho;<sub>iso</sub></sub> |Ψ(<b>r</b>, <i>t</i>)|² <i>d</i>³<b>r</b> = ' + pctStr;
+        mathDesc.innerHTML = 'Boundary surface enclosing ' + pctStr + ' detection probability. Lobes are shaded with phase &theta; = arg(Ψ).';
+
+        legendTitle.innerText = 'Surface Phase & Lobes arg(Ψ)';
+        legendGradient.style.background = 'linear-gradient(to right, #00ffff, #3b82f6, #9333ea, #ef4444, #f59e0b, #10b981, #00ffff)';
+        legendLabels.innerHTML = `
+          <span>&minus;π (&minus; Lobe)</span>
+          <span>&minus;π/2</span>
+          <span style="color:#f87171; font-weight:bold;">0 (+ Lobe)</span>
+          <span>+π/2</span>
+          <span>+π</span>
+        `;
+      }
+      isoGridValid = false;
+      updateIsoThreshold();
+      if (sync) scheduleURLUpdate();
+    }
+
+    document.getElementById('mode-btn-psi').onclick = () => setDisplayMode('psi');
+    document.getElementById('mode-btn-prob').onclick = () => setDisplayMode('prob');
+    document.getElementById('mode-btn-iso').onclick = () => setDisplayMode('iso');
+
+    document.getElementById('iso-percent-slider').oninput = (e) => {
+      updateIsoPercentDisplay(parseFloat(e.target.value));
+    };
+
+    const isoNumInput = document.getElementById('iso-percent-num');
+    isoNumInput.oninput = (e) => {
+      let val = parseInt(e.target.value);
+      if (!isNaN(val)) updateIsoPercentDisplay(val);
+    };
+    isoNumInput.onchange = (e) => {
+      let val = parseInt(e.target.value);
+      if (isNaN(val)) val = 90;
+      updateIsoPercentDisplay(val);
+    };
+
+    document.querySelectorAll('.iso-quick-btn').forEach(btn => {
+      btn.onclick = () => updateIsoPercentDisplay(parseFloat(btn.dataset.val));
+    });
+
+    document.getElementById('iso-alpha-slider').oninput = (e) => {
+      isoAlpha = parseFloat(e.target.value);
+      raymarchUniforms.u_isoAlpha.value = isoAlpha;
+      document.getElementById('iso-alpha-label').innerText = Math.round(isoAlpha * 100) + '%';
+      scheduleURLUpdate();
+    };
+
+    function getOrbitalNormalization() {
+      let sumSq = 0.0;
+      for (let i = 0; i < orbitals.length; i++) {
+        if (orbitals[i].enabled !== false) {
+          sumSq += orbitals[i].rawAmp * orbitals[i].rawAmp;
+        }
+      }
+      const normFactor = sumSq > 1e-8 ? 1.0 / Math.sqrt(sumSq) : 0.0;
+      return orbitals.map(orb => {
+        const isInc = (orb.enabled !== false);
+        return {
+          ...orb,
+          enabled: isInc,
+          normAmp: isInc ? (orb.rawAmp * normFactor) : 0.0,
+          prob: (isInc && sumSq > 1e-8) ? (orb.rawAmp * orb.rawAmp) / sumSq : 0.0
+        };
+      });
+    }
+
+    function getActiveNormalizedOrbitals() {
+      return getOrbitalNormalization().filter(orb => orb.enabled);
+    }
+
+    function updateShaderUniforms() {
+      const activeNormalized = getActiveNormalizedOrbitals();
+      raymarchUniforms.u_numOrbitals.value = activeNormalized.length;
+      raymarchUniforms.u_a_mu.value = a_mu;
+
+      let maxN = 1;
+      for (let i = 0; i < activeNormalized.length; i++) {
+        if (activeNormalized[i].n > maxN) maxN = activeNormalized[i].n;
+      }
+
+      const bRadius = Math.max(6.0, maxN * (maxN + 1.2) * 2.7) * a_mu;
+      raymarchUniforms.u_boundingRadius.value = bRadius;
+
+      const guideScale = bRadius / 36.0;
+      axesGroup.scale.set(guideScale, guideScale, guideScale);
+
+      rebuildScaleRings(bRadius);
+
+      for (let i = 0; i < MAX_ORBITALS; i++) {
+        if (i < activeNormalized.length) {
+          raymarchUniforms.u_n.value[i] = activeNormalized[i].n;
+          raymarchUniforms.u_l.value[i] = activeNormalized[i].l;
+          raymarchUniforms.u_m.value[i] = activeNormalized[i].m;
+          raymarchUniforms.u_coeff.value[i].set(activeNormalized[i].normAmp, activeNormalized[i].phase);
+          raymarchUniforms.u_norm.value[i] = activeNormalized[i].norm;
+        } else {
+          raymarchUniforms.u_n.value[i] = 1;
+          raymarchUniforms.u_l.value[i] = 0;
+          raymarchUniforms.u_m.value[i] = 0;
+          raymarchUniforms.u_coeff.value[i].set(0.0, 0.0);
+          raymarchUniforms.u_norm.value[i] = 1.0;
+        }
+      }
+    }
+
+    function updateOrbitalCardStats() {
+      const normInfo = getOrbitalNormalization();
+      const listContainer = document.getElementById('orbital-list');
+      const cards = listContainer.querySelectorAll('.orbital-card');
+
+      cards.forEach((card, i) => {
+        if (!orbitals[i]) return;
+        const isInc = orbitals[i].enabled !== false;
+        const normSpan = card.querySelector('.val-norm-amp');
+        const probSpan = card.querySelector('.val-prob');
+        const rawSpan = card.querySelector('.val-raw-amp');
+        const phaseSpan = card.querySelector('.val-phase');
+
+        if (rawSpan) rawSpan.innerText = orbitals[i].rawAmp.toFixed(2);
+        if (phaseSpan) phaseSpan.innerText = orbitals[i].phase.toFixed(2) + ' rad';
+
+        if (normSpan && probSpan) {
+          if (isInc) {
+            normSpan.innerText = normInfo[i].normAmp.toFixed(3);
+            probSpan.innerText = (normInfo[i].prob * 100).toFixed(1) + '%';
+          } else {
+            normSpan.innerText = '0.000';
+            probSpan.innerText = '0.0% (off)';
+          }
+        }
+      });
+
+      const normText = document.getElementById('norm-status-text');
+      if (normText) {
+        const activeCount = orbitals.filter(o => o.enabled !== false).length;
+        if (activeCount === 0) {
+          normText.innerHTML = 'Normalizer: <b style="color:#ef4444;">0 active states (Ψ = 0)</b>';
+        } else {
+          normText.innerHTML = `Normalizer: <b>&Sigma; |c<sub>k</sub>|² = 1.000</b> <span style="color:#94a3b8; font-weight:normal; font-size:0.7rem;">(${activeCount}/${orbitals.length} active)</span>`;
+        }
+      }
+    }
+
+    function renderOrbitalList() {
+      const listContainer = document.getElementById('orbital-list');
+      listContainer.innerHTML = '';
+      const normInfo = getOrbitalNormalization();
+
+      orbitals.forEach((orb, idx) => {
+        const info = normInfo[idx];
+        const isIncluded = (orb.enabled !== false);
+        const card = document.createElement('div');
+        card.className = `orbital-card ${isIncluded ? '' : 'card-excluded'}`;
+
+        card.innerHTML = `
+          <div class="card-row" style="justify-content:space-between; align-items:center;">
+            <label class="orbital-toggle-label" title="Toggle state in superposition">
+              <input type="checkbox" class="inp-enable" data-idx="${idx}" ${isIncluded ? 'checked' : ''}>
+              <strong style="font-size:0.8rem; color:${isIncluded ? '#38bdf8' : '#94a3b8'};">
+                State #${idx + 1}: ${getSpectroscopicNotation(orb.n, orb.l, orb.m)}
+              </strong>
+            </label>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span class="badge-state-status ${isIncluded ? 'badge-state-active' : 'badge-state-excluded'}">
+                ${isIncluded ? 'Active' : 'Muted'}
+              </span>
+              <button class="btn-danger" data-idx="${idx}" title="Delete state">✕</button>
+            </div>
+          </div>
+          <div class="card-row">
+            <label><i>n</i>: <input type="number" min="1" max="8" value="${orb.n}" class="inp-n" data-idx="${idx}"></label>
+            <label><i>l</i>: <input type="number" min="0" max="${orb.n - 1}" value="${orb.l}" class="inp-l" data-idx="${idx}"></label>
+            <label><i>m</i>: <input type="number" min="${-orb.l}" max="${orb.l}" value="${orb.m}" class="inp-m" data-idx="${idx}"></label>
+          </div>
+          <div class="card-row">
+            <label style="flex:1;">Weight |<i>c</i>|: <b class="val-raw-amp" style="color:#38bdf8;">${orb.rawAmp.toFixed(2)}</b></label>
+            <input type="range" min="0" max="2.0" step="0.02" value="${orb.rawAmp}" class="inp-amp" data-idx="${idx}">
+          </div>
+          <div class="card-row" style="font-size:0.7rem; color:#93c5fd; justify-content:space-between;">
+            <span>Norm |<i>c</i><sub>norm</sub>|: <b class="val-norm-amp">${isIncluded ? info.normAmp.toFixed(3) : '0.000'}</b></span>
+            <span>Prob |<i>c</i>|²: <b class="val-prob">${isIncluded ? (info.prob * 100).toFixed(1) + '%' : '0.0% (off)'}</b></span>
+          </div>
+          <div class="card-row">
+            <label style="flex:1;">Phase δ: <b class="val-phase" style="color:#38bdf8;">${orb.phase.toFixed(2)} rad</b></label>
+            <input type="range" min="0" max="6.28" step="0.02" value="${orb.phase}" class="inp-phase" data-idx="${idx}">
+          </div>
+        `;
+        listContainer.appendChild(card);
+      });
+
+      listContainer.querySelectorAll('.inp-enable').forEach(cb => {
+        cb.onchange = (e) => {
+          orbitals[parseInt(e.target.dataset.idx)].enabled = e.target.checked;
+          isoGridValid = false;
+          renderOrbitalList();
+          updateShaderUniforms();
+          updateIsoThreshold();
+          scheduleURLUpdate();
+        };
+      });
+
+      listContainer.querySelectorAll('.btn-danger').forEach(b => {
+        b.onclick = (e) => {
+          orbitals.splice(parseInt(e.target.dataset.idx), 1);
+          isoGridValid = false;
+          renderOrbitalList();
+          updateShaderUniforms();
+          updateIsoThreshold();
+          scheduleURLUpdate();
+        };
+      });
+
+      listContainer.querySelectorAll('.inp-n').forEach(input => {
+        input.onchange = (e) => {
+          const idx = parseInt(e.target.dataset.idx);
+          const newN = Math.max(1, Math.min(8, parseInt(e.target.value) || 1));
+          orbitals[idx].n = newN;
+          if (orbitals[idx].l >= newN) orbitals[idx].l = newN - 1;
+          if (Math.abs(orbitals[idx].m) > orbitals[idx].l) orbitals[idx].m = 0;
+          orbitals[idx].norm = computeNormalization(orbitals[idx].n, orbitals[idx].l, orbitals[idx].m);
+          isoGridValid = false;
+          renderOrbitalList();
+          updateShaderUniforms();
+          updateIsoThreshold();
+          scheduleURLUpdate();
+        };
+      });
+
+      listContainer.querySelectorAll('.inp-l').forEach(input => {
+        input.onchange = (e) => {
+          const idx = parseInt(e.target.dataset.idx);
+          let newL = Math.max(0, parseInt(e.target.value) || 0);
+          if (newL >= orbitals[idx].n) newL = orbitals[idx].n - 1;
+          orbitals[idx].l = newL;
+          if (Math.abs(orbitals[idx].m) > newL) orbitals[idx].m = 0;
+          orbitals[idx].norm = computeNormalization(orbitals[idx].n, orbitals[idx].l, orbitals[idx].m);
+          isoGridValid = false;
+          renderOrbitalList();
+          updateShaderUniforms();
+          updateIsoThreshold();
+          scheduleURLUpdate();
+        };
+      });
+
+      listContainer.querySelectorAll('.inp-m').forEach(input => {
+        input.onchange = (e) => {
+          const idx = parseInt(e.target.dataset.idx);
+          let newM = parseInt(e.target.value) || 0;
+          newM = Math.max(-orbitals[idx].l, Math.min(orbitals[idx].l, newM));
+          orbitals[idx].m = newM;
+          orbitals[idx].norm = computeNormalization(orbitals[idx].n, orbitals[idx].l, orbitals[idx].m);
+          isoGridValid = false;
+          renderOrbitalList();
+          updateShaderUniforms();
+          updateIsoThreshold();
+          scheduleURLUpdate();
+        };
+      });
+
+      listContainer.querySelectorAll('.inp-amp').forEach(input => {
+        input.oninput = (e) => {
+          const idx = parseInt(e.target.dataset.idx);
+          if (!orbitals[idx]) return;
+          orbitals[idx].rawAmp = parseFloat(e.target.value);
+          isoGridValid = false;
+          updateShaderUniforms();
+          scheduleIsoThresholdUpdate();
+          updateOrbitalCardStats();
+          scheduleURLUpdate();
+        };
+      });
+
+      listContainer.querySelectorAll('.inp-phase').forEach(input => {
+        input.oninput = (e) => {
+          const idx = parseInt(e.target.dataset.idx);
+          if (!orbitals[idx]) return;
+          orbitals[idx].phase = parseFloat(e.target.value);
+          isoGridValid = false;
+          updateShaderUniforms();
+          scheduleIsoThresholdUpdate();
+          const card = input.closest('.orbital-card');
+          if (card) {
+            const phaseSpan = card.querySelector('.val-phase');
+            if (phaseSpan) phaseSpan.innerText = orbitals[idx].phase.toFixed(2) + ' rad';
+          }
+          scheduleURLUpdate();
+        };
+      });
+
+      updateOrbitalCardStats();
+    }
+
+    function getSpectroscopicNotation(n, l, m) {
+      const letters = ['s', 'p', 'd', 'f', 'g', 'h', 'i', 'k'];
+      return `${n}${letters[l] || '?'}&nbsp;(<i>m</i> = ${m})`;
+    }
+
+    document.getElementById('add-orbital-btn').onclick = () => {
+      if (orbitals.length >= MAX_ORBITALS) return;
+      orbitals.push({n: 2, l: 1, m: 0, rawAmp: 1.0, phase: 0.0, enabled: true, norm: computeNormalization(2, 1, 0)});
+      isoGridValid = false;
+      renderOrbitalList();
+      updateShaderUniforms();
+      updateIsoThreshold();
+      scheduleURLUpdate();
+    };
+
+    document.getElementById('speed-slider').oninput = (e) => {
+      simSpeed = parseFloat(e.target.value);
+      document.getElementById('speed-label').innerText = simSpeed.toFixed(1) + 'x';
+      scheduleURLUpdate();
+    };
+
+    document.getElementById('gain-slider').oninput = (e) => {
+      const val = parseFloat(e.target.value);
+      raymarchUniforms.u_gain.value = val;
+      const lbl = document.getElementById('gain-label');
+      if (lbl) lbl.innerText = val.toFixed(1);
+      scheduleURLUpdate();
+    };
+
+    document.getElementById('steps-select').onchange = (e) => {
+      raymarchUniforms.u_maxSteps.value = parseInt(e.target.value);
+      scheduleURLUpdate();
+    };
+
+    document.getElementById('play-btn').onclick = () => {
+      isPaused = !isPaused;
+      document.getElementById('play-btn').innerText = isPaused ? "Play" : "Pause";
+      scheduleURLUpdate();
+    };
+
+    document.getElementById('reset-cam-btn').onclick = () => {
+      let maxN = 1;
+      for (let i = 0; i < orbitals.length; i++) {
+        if (orbitals[i].enabled !== false && orbitals[i].n > maxN) maxN = orbitals[i].n;
+      }
+      orbitRadius = Math.max(DEFAULT_RADIUS, maxN * (maxN + 1.2) * 3.4);
+      orbitTheta = 0.6;
+      orbitPhi = 0.4;
+      updateOrbitCamera();
+      if (navMode === 'fly') {
+        const lookDir = new THREE.Vector3();
+        camera.getWorldDirection(lookDir);
+        flyPitch = Math.asin(Math.min(0.999, Math.max(-0.999, lookDir.y)));
+        flyYaw = Math.atan2(-lookDir.x, -lookDir.z);
+        updateFlyCameraRotation();
+      }
+      updateScaleMeasure();
+      scheduleURLUpdate();
+    };
+
+    function getShareableURL() {
+      const params = new URLSearchParams();
+      params.set('mode', currentMode);
+
+      const orbStrs = orbitals.map(o => {
+        const amp = Number(o.rawAmp.toFixed(2));
+        const ph = Number(o.phase.toFixed(2));
+        const en = (o.enabled !== false) ? 1 : 0;
+        return `${o.n},${o.l},${o.m},${amp},${ph},${en}`;
+      });
+      params.set('orbitals', orbStrs.join(';'));
+      params.set('speed', simSpeed.toFixed(1));
+      params.set('gain', raymarchUniforms.u_gain.value.toFixed(1));
+      params.set('isoPct', Math.round(targetProbability * 100));
+      params.set('isoAlpha', isoAlpha.toFixed(2));
+      params.set('steps', raymarchUniforms.u_maxSteps.value);
+      params.set('axes', guidesVisible ? '1' : '0');
+      params.set('scale', scaleVisible ? '1' : '0');
+      params.set('paused', isPaused ? '1' : '0');
+      params.set('nav', navMode);
+
+      if (navMode === 'fly') {
+        params.set('camX', camera.position.x.toFixed(1));
+        params.set('camY', camera.position.y.toFixed(1));
+        params.set('camZ', camera.position.z.toFixed(1));
+        params.set('yaw', flyYaw.toFixed(2));
+        params.set('pitch', flyPitch.toFixed(2));
+      } else {
+        params.set('camR', orbitRadius.toFixed(1));
+        params.set('camTheta', orbitTheta.toFixed(2));
+        params.set('camPhi', orbitPhi.toFixed(2));
+      }
+
+      return `${window.location.protocol}//${window.location.host}${window.location.pathname}?${params.toString()}`;
+    }
+
+    let urlUpdateTimer = null;
+    function scheduleURLUpdate(immediate = false) {
+      if (isInitializing) return;
+      if (urlUpdateTimer) clearTimeout(urlUpdateTimer);
+      if (immediate) syncURLNow();
+      else urlUpdateTimer = setTimeout(syncURLNow, 300);
+    }
+
+    function syncURLNow() {
+      try {
+        window.history.replaceState(null, '', getShareableURL());
+      } catch (err) { }
+    }
+
+    function initFromURL() {
+      isInitializing = true;
+      let query = window.location.search;
+      if (!query && window.location.hash.includes('?')) {
+        query = window.location.hash.substring(window.location.hash.indexOf('?'));
+      }
+      const p = new URLSearchParams(query);
+
+      let loadedOrbitals = false;
+      const rawOrbs = p.get('orbitals') || p.get('orbs');
+      if (rawOrbs) {
+        try {
+          const tokens = rawOrbs.split(/;+|\|+/).map(s => s.trim()).filter(Boolean);
+          if (tokens.length > 0) {
+            orbitals = tokens.slice(0, MAX_ORBITALS).map(item => {
+              const parts = item.split(',').map(s => s.trim());
+              const n = Math.max(1, Math.min(8, parseInt(parts[0]) || 1));
+              const l = Math.max(0, Math.min(n - 1, parseInt(parts[1]) || 0));
+              const m = Math.max(-l, Math.min(l, parseInt(parts[2]) || 0));
+              const rawAmp = parts[3] ? Math.max(0, Math.min(2.0, parseFloat(parts[3]))) : 1.0;
+              const phase = parts[4] ? parseFloat(parts[4]) : 0.0;
+              const enabled = parts[5] !== undefined ? !(parts[5] === '0' || parts[5] === 'false') : true;
+              return {n, l, m, rawAmp, phase, enabled, norm: computeNormalization(n, l, m)};
+            });
+            loadedOrbitals = true;
+          }
+        } catch (e) { }
+      }
+
+      if (!loadedOrbitals) {
+        orbitals = JSON.parse(JSON.stringify(PRESETS.lyman));
+        for (let i = 0; i < orbitals.length; i++) {
+          orbitals[i].norm = computeNormalization(orbitals[i].n, orbitals[i].l, orbitals[i].m);
+        }
+      }
+
+      renderOrbitalList();
+      updateShaderUniforms();
+
+      const modeParam = (p.get('mode') || '').toLowerCase();
+      let modeToSet = 'psi';
+      if (modeParam === 'prob' || modeParam === '1') modeToSet = 'prob';
+      else if (modeParam === 'iso' || modeParam === '2') modeToSet = 'iso';
+      setDisplayMode(modeToSet, false);
+
+      const isoPctParam = p.get('isoPct');
+      if (isoPctParam !== null) {
+        const val = parseFloat(isoPctParam);
+        if (!isNaN(val)) updateIsoPercentDisplay(val, false);
+      } else {
+        updateIsoPercentDisplay(90, false);
+      }
+
+      if (p.has('axes')) setGuidesVisibility(p.get('axes') === '1', false);
+      if (p.has('scale')) setScaleVisibility(p.get('scale') === '1', false);
+
+      if (p.has('speed')) {
+        const spd = parseFloat(p.get('speed'));
+        if (!isNaN(spd)) {
+          simSpeed = Math.max(0.0, Math.min(4.0, spd));
+          document.getElementById('speed-slider').value = simSpeed;
+          document.getElementById('speed-label').innerText = simSpeed.toFixed(1) + 'x';
+        }
+      }
+
+      if (p.has('gain')) {
+        const gn = parseFloat(p.get('gain'));
+        if (!isNaN(gn)) {
+          const val = Math.max(0.2, Math.min(30.0, gn));
+          raymarchUniforms.u_gain.value = val;
+          document.getElementById('gain-slider').value = val;
+          const lbl = document.getElementById('gain-label');
+          if (lbl) lbl.innerText = val.toFixed(1);
+        }
+      }
+
+      if (p.has('steps')) {
+        const stp = parseInt(p.get('steps'));
+        if (!isNaN(stp)) {
+          raymarchUniforms.u_maxSteps.value = stp;
+          const select = document.getElementById('steps-select');
+          if (select) select.value = stp.toString();
+        }
+      }
+
+      let parsedNav = 'orbit';
+      if (p.has('nav')) {
+        const navP = p.get('nav').toLowerCase();
+        if (navP === 'fly' || navP === 'free') parsedNav = 'fly';
+      }
+
+      if (parsedNav === 'fly') {
+        if (p.has('camX') && p.has('camY') && p.has('camZ')) {
+          camera.position.set(parseFloat(p.get('camX')), parseFloat(p.get('camY')), parseFloat(p.get('camZ')));
+        } else {
+          updateOrbitCamera();
+        }
+        if (p.has('yaw')) flyYaw = parseFloat(p.get('yaw'));
+        if (p.has('pitch')) flyPitch = parseFloat(p.get('pitch'));
+        else {
+          const lookDir = new THREE.Vector3();
+          camera.getWorldDirection(lookDir);
+          flyPitch = Math.asin(Math.min(0.999, Math.max(-0.999, lookDir.y)));
+          flyYaw = Math.atan2(-lookDir.x, -lookDir.z);
+        }
+        updateFlyCameraRotation();
+      } else {
+        if (p.has('camR')) {
+          orbitRadius = Math.max(4.0, Math.min(500.0, parseFloat(p.get('camR'))));
+          if (p.has('camTheta')) orbitTheta = parseFloat(p.get('camTheta'));
+          if (p.has('camPhi')) orbitPhi = Math.max(-Math.PI * 0.49, Math.min(Math.PI * 0.49, parseFloat(p.get('camPhi'))));
+        }
+        updateOrbitCamera();
+      }
+
+      setNavMode(parsedNav, false);
+
+      isInitializing = false;
+      updateIsoThreshold();
+      scheduleURLUpdate(true);
+    }
+
+    document.getElementById('share-link-btn').onclick = () => {
+      const shareUrl = getShareableURL();
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        const btn = document.getElementById('share-link-btn');
+        const prevText = btn.innerText;
+        btn.innerText = '✓ Link Copied!';
+        btn.classList.add('btn-active-state');
+        setTimeout(() => {
+          btn.innerText = prevText;
+          btn.classList.remove('btn-active-state');
+        }, 1800);
+      }).catch(() => prompt('Copy configuration link:', shareUrl));
+    };
+
+    // Pointer events
+    const activePointers = new Map();
+    let initialPinchDist = 0;
+    let initialPinchRadius = DEFAULT_RADIUS;
+
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.glass-panel') || e.target.closest('#toggle-ui-btn')) return;
+
+      // Lock mouse when clicking the canvas in Fly mode
+      if (navMode === 'fly') {
+        requestFlyPointerLock();
+      }
+
+      activePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+      if (activePointers.size === 2) {
+        const [p1, p2] = Array.from(activePointers.values());
+        initialPinchDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        initialPinchRadius = (navMode === 'orbit') ? orbitRadius : camera.position.length();
+      }
+    });
+
+    // Pointer Lock Mouse Move handler
+    document.addEventListener('mousemove', (e) => {
+      if (navMode === 'fly' && document.pointerLockElement === renderer.domElement) {
+        const sensitivity = 0.0022;
+        flyYaw -= (e.movementX || 0) * sensitivity;
+        flyPitch -= (e.movementY || 0) * sensitivity;
+        flyPitch = Math.max(-Math.PI * 0.49, Math.min(Math.PI * 0.49, flyPitch));
+        updateFlyCameraRotation();
+        updateScaleMeasure();
+        scheduleURLUpdate();
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (document.pointerLockElement === renderer.domElement) return;
+
+      if (!activePointers.has(e.pointerId)) return;
+      const prev = activePointers.get(e.pointerId);
+
+      if (activePointers.size === 1) {
+        const dx = e.clientX - prev.x;
+        const dy = e.clientY - prev.y;
+
+        if (navMode === 'orbit') {
+          orbitTheta -= dx * 0.005;
+          orbitPhi += dy * 0.005;
+          orbitPhi = Math.max(-Math.PI * 0.49, Math.min(Math.PI * 0.49, orbitPhi));
+          updateOrbitCamera();
+        } else {
+          flyYaw -= dx * 0.004;
+          flyPitch -= dy * 0.004;
+          flyPitch = Math.max(-Math.PI * 0.49, Math.min(Math.PI * 0.49, flyPitch));
+          updateFlyCameraRotation();
+        }
+        updateScaleMeasure();
+      } else if (activePointers.size === 2) {
+        activePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+        const [p1, p2] = Array.from(activePointers.values());
+        const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        if (initialPinchDist > 5) {
+          if (navMode === 'orbit') {
+            const factor = initialPinchDist / currentDist;
+            orbitRadius = Math.max(4.0, Math.min(500.0, initialPinchRadius * factor));
+            updateOrbitCamera();
+          } else {
+            const delta = (currentDist - initialPinchDist) * 0.08;
+            const forward = new THREE.Vector3();
+            camera.getWorldDirection(forward);
+            camera.position.addScaledVector(forward, delta);
+            initialPinchDist = currentDist;
+          }
+          updateScaleMeasure();
+        }
+        return;
+      }
+
+      activePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    });
+
+    function endPointer(e) {
+      activePointers.delete(e.pointerId);
+      if (activePointers.size < 2) initialPinchDist = 0;
+      scheduleURLUpdate();
+    }
+    window.addEventListener('pointerup', endPointer);
+    window.addEventListener('pointercancel', endPointer);
+
+    window.addEventListener('wheel', (e) => {
+      if (e.target.closest('.glass-panel') || e.target.closest('#toggle-ui-btn')) return;
+      if (navMode === 'orbit') {
+        orbitRadius = Math.max(4.0, Math.min(500.0, orbitRadius + e.deltaY * Math.max(0.04, orbitRadius * 0.002)));
+        updateOrbitCamera();
+      } else {
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        const dollySpeed = Math.max(1.5, camera.position.length() * 0.1);
+        camera.position.addScaledVector(forward, -Math.sign(e.deltaY) * dollySpeed);
+      }
+      updateScaleMeasure();
+      scheduleURLUpdate();
+    }, {passive: true});
+
+    const keysPressed = {};
+    window.addEventListener('keydown', (e) => {
+      const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON';
+      if (e.code === 'KeyF' && !isInput) {
+        setNavMode(navMode === 'orbit' ? 'fly' : 'orbit');
+        return;
+      }
+      if (e.code === 'KeyX' && !isInput) {
+        setGuidesVisibility(!guidesVisible);
+        return;
+      }
+      if (e.code === 'KeyZ' && !isInput) {
+        setScaleVisibility(!scaleVisible);
+        return;
+      }
+      if (e.code === 'KeyH' && !isInput) {
+        setUIVisibility(!uiVisible);
+        return;
+      }
+      if (!isInput) {
+        if (e.code === 'Space') e.preventDefault();
+        keysPressed[e.code] = true;
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {keysPressed[e.code] = false;});
+
+    function processMovement(deltaTime) {
+      const mult = (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) ? 2.5 : 1.0;
+      let changed = false;
+
+      if (navMode === 'orbit') {
+        const radialSpeed = Math.max(16.0, orbitRadius * 0.6) * mult * deltaTime;
+        const angSpeed = 1.4 * mult * deltaTime;
+
+        if (keysPressed['KeyW']) {orbitRadius = Math.max(4.0, orbitRadius - radialSpeed); changed = true;}
+        if (keysPressed['KeyS']) {orbitRadius = Math.min(500.0, orbitRadius + radialSpeed); changed = true;}
+        if (keysPressed['KeyA']) {orbitTheta -= angSpeed; changed = true;}
+        if (keysPressed['KeyD']) {orbitTheta += angSpeed; changed = true;}
+        if (keysPressed['KeyE'] || keysPressed['Space']) {orbitPhi = Math.min(Math.PI * 0.49, orbitPhi + angSpeed); changed = true;}
+        if (keysPressed['KeyQ'] || keysPressed['KeyC']) {orbitPhi = Math.max(-Math.PI * 0.49, orbitPhi - angSpeed); changed = true;}
+
+        if (changed) {
+          updateOrbitCamera();
+          updateScaleMeasure();
+          scheduleURLUpdate();
+        }
+      } else {
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize();
+
+        const moveDir = new THREE.Vector3();
+        if (keysPressed['KeyW']) moveDir.add(forward);
+        if (keysPressed['KeyS']) moveDir.sub(forward);
+        if (keysPressed['KeyD']) moveDir.add(right);
+        if (keysPressed['KeyA']) moveDir.sub(right);
+        if (keysPressed['KeyE'] || keysPressed['Space']) moveDir.add(camera.up);
+        if (keysPressed['KeyQ'] || keysPressed['KeyC']) moveDir.sub(camera.up);
+
+        if (moveDir.lengthSq() > 0) {
+          moveDir.normalize();
+          const speed = Math.max(12.0, camera.position.length() * 0.75) * mult * deltaTime;
+          camera.position.addScaledVector(moveDir, speed);
+          changed = true;
+          updateScaleMeasure();
+          scheduleURLUpdate();
+        }
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      updateScaleMeasure();
+    });
+
+    let lastTimestamp = performance.now();
+    let frameCount = 0;
+    const _projView = new THREE.Matrix4();
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const deltaTime = Math.min((now - lastTimestamp) * 0.001, 0.1);
+      lastTimestamp = now;
+      frameCount++;
+
+      if (!isPaused) {
+        simTime += deltaTime * simSpeed;
+        raymarchUniforms.u_time.value = simTime;
+        if (currentMode === 'iso' && !isSystemStationary() && frameCount % 15 === 0) {
+          isoGridValid = false;
+          updateIsoThreshold();
+        }
+      }
+
+      processMovement(deltaTime);
+
+      camera.updateMatrixWorld();
+      _projView.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      raymarchUniforms.u_invProjView.value.copy(_projView).invert();
+      raymarchUniforms.u_camPos.value.copy(camera.position);
+
+      renderer.clear();
+      renderer.render(scene, camera);
+      renderer.clearDepth();
+      if (guidesVisible) renderer.render(axesScene, camera);
+    }
+
+    updatePhysicsConstants();
+    initFromURL();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
